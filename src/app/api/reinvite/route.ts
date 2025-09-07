@@ -6,8 +6,6 @@ const bodySchema = z.object({
   owner: z.string().min(1),
   repo: z.string().min(1),
   username: z.string().min(1),
-  permission: z.enum(["pull", "triage", "push", "maintain", "admin"]).default("push"),
-  dryRun: z.boolean().optional().default(false),
 });
 
 function getOctokit() {
@@ -19,7 +17,7 @@ function getOctokit() {
 export async function POST(req: NextRequest) {
   try {
     const json = await req.json();
-    const { owner, repo, username, permission, dryRun } = bodySchema.parse(json);
+    const { owner, repo, username } = bodySchema.parse(json);
 
     const octokit = getOctokit();
 
@@ -34,56 +32,47 @@ export async function POST(req: NextRequest) {
     const deleted: Array<{ id: number }> = [];
 
     // 2) Delete matching invitations
-    if (!dryRun) {
-      for (const inv of matches) {
-        await octokit.rest.repos.deleteInvitation({
-          owner,
-          repo,
-          invitation_id: inv.id,
-        });
-        deleted.push({ id: inv.id });
-      }
+    for (const inv of matches) {
+      await octokit.rest.repos.deleteInvitation({
+        owner,
+        repo,
+        invitation_id: inv.id,
+      });
+      deleted.push({ id: inv.id });
     }
 
     // 3) Send a fresh invite
     //    - 201 Created => new invitation sent
     //    - 204 No Content => user is already a collaborator
-    let inviteResult:
-      | { status: number; message: string; invitationId?: number }
-      | null = null;
+    const resp = await octokit.rest.repos.addCollaborator({
+      owner,
+      repo,
+      username,
+      permission: "push",
+    });
 
-    if (!dryRun) {
-      const resp = await octokit.rest.repos.addCollaborator({
-        owner,
-        repo,
-        username,
-        permission, // pull | triage | push | maintain | admin
-      });
+    // Some responses include an invitation object in the body,
+    // but not always; handle both 201/204.
+    const responseData = resp.data as { id?: number; invitation_id?: number };
+    const invitationId = responseData?.id ?? responseData?.invitation_id;
 
-      // Some responses include an invitation object in the body,
-      // but not always; handle both 201/204.
-      const responseData = resp.data as { id?: number; invitation_id?: number };
-      const invitationId = responseData?.id ?? responseData?.invitation_id;
-
-      inviteResult = {
-        status: resp.status,
-        message:
-          resp.status === 201
-            ? "Invitation (re)sent"
-            : resp.status === 204
-            ? "User is already a collaborator (no invite needed)"
-            : `Unexpected status ${resp.status}`,
-        invitationId,
-      };
-    }
+    const inviteResult = {
+      status: resp.status,
+      message:
+        resp.status === 201
+          ? "Invitation (re)sent"
+          : resp.status === 204
+          ? "User is already a collaborator (no invite needed)"
+          : `Unexpected status ${resp.status}`,
+      invitationId,
+    };
 
     return NextResponse.json({
       ok: true,
-      dryRun,
-      input: { owner, repo, username, permission },
+      input: { owner, repo, username, permission: "push" },
       foundInvitations: matches.map(m => ({ id: m.id, invitee: m.invitee?.login })),
-      deletedInvitations: dryRun ? [] : deleted,
-      invite: dryRun ? null : inviteResult,
+      deletedInvitations: deleted,
+      invite: inviteResult,
     });
   } catch (err: unknown) {
     // Map a few common GitHub API errors into helpful messages

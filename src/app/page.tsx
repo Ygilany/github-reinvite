@@ -7,7 +7,6 @@ interface Input {
   owner: string;
   repo: string;
   username: string;
-  permission: "pull" | "triage" | "push" | "maintain" | "admin";
 }
 
 interface Invitation {
@@ -30,19 +29,16 @@ type Result = {
   foundInvitations?: Invitation[];
   deletedInvitations?: { id: number }[];
   invite?: InviteResult | null;
-  dryRun?: boolean;
 };
 
 export default function Page() {
-  const [organization, setOrganization] = useState<OrganizationKey>("IT3049C-Fall25");
+  const organization = "18-341"; // Hardcoded organization
   const [assignment, setAssignment] = useState<string>(() => {
     // Ensure we have a valid assignment on first load
-    const firstAssignment = Object.keys(ORGANIZATIONS["IT3049C-Fall25"].assignments)[0];
-    return firstAssignment || "🧑‍💻 Campus Portal (JS Exercises)";
+    const firstAssignment = Object.keys(ORGANIZATIONS[organization].assignments)[0];
+    return firstAssignment || "🧑‍💻Lab: Git Started - Your Profile";
   });
   const [username, setUsername] = useState("");
-  const [permission, setPermission] = useState<"pull"|"triage"|"push"|"maintain"|"admin">("admin");
-  const [dryRun, setDryRun] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
 
@@ -50,13 +46,6 @@ export default function Page() {
   const assignmentPrefix = ORGANIZATIONS[organization].assignments[assignment as keyof typeof ORGANIZATIONS[typeof organization]["assignments"]];
   const repoName = username && assignmentPrefix ? `${assignmentPrefix}-${username}` : "";
   const owner = ORGANIZATIONS[organization].owner;
-
-  // Handle organization change - reset assignment to first available
-  const handleOrganizationChange = (newOrg: OrganizationKey) => {
-    setOrganization(newOrg);
-    const firstAssignment = Object.keys(ORGANIZATIONS[newOrg].assignments)[0];
-    setAssignment(firstAssignment);
-  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,7 +61,7 @@ export default function Page() {
       const res = await fetch("/api/reinvite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ owner, repo: repoName, username, permission, dryRun }),
+        body: JSON.stringify({ owner, repo: repoName, username }),
       });
       const json = await res.json();
       setResult(json);
@@ -118,43 +107,11 @@ export default function Page() {
             margin: "0",
             lineHeight: "1.6"
           }}>
-            Remove any stale repo invitation and send a fresh one
+            Select an assignment and enter your GitHub username to re-invite yourself
           </p>
         </div>
 
         <form onSubmit={onSubmit} style={{ display: "grid", gap: "0.75rem" }}>
-          <div style={{ display: "grid", gap: "0.5rem" }}>
-            <label style={{ 
-              fontSize: "0.875rem", 
-              fontWeight: "600", 
-              color: "#374151",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em"
-            }}>
-              Organization
-            </label>
-            <select 
-              value={organization} 
-              onChange={e => handleOrganizationChange(e.target.value as OrganizationKey)}
-              style={{
-                padding: "0.875rem 1rem",
-                border: "2px solid #e5e7eb",
-                borderRadius: "8px",
-                fontSize: "1rem",
-                transition: "all 0.2s ease",
-                outline: "none",
-                background: "white",
-                cursor: "pointer"
-              }}
-              onFocus={(e) => e.target.style.borderColor = "#8B0000"}
-              onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
-            >
-              {Object.entries(ORGANIZATIONS).map(([key, org]) => (
-                <option key={key} value={key}>🏫 {org.name}</option>
-              ))}
-            </select>
-          </div>
-
           <div style={{ display: "grid", gap: "0.5rem" }}>
             <label style={{ 
               fontSize: "0.875rem", 
@@ -246,69 +203,6 @@ export default function Page() {
             </div>
           </div>
 
-          <div style={{ display: "grid", gap: "0.5rem" }}>
-            <label style={{ 
-              fontSize: "0.875rem", 
-              fontWeight: "600", 
-              color: "#374151",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em"
-            }}>
-              Permission Level
-            </label>
-            <select 
-              value={permission} 
-              onChange={e => setPermission(e.target.value as "pull"|"triage"|"push"|"maintain"|"admin")}
-              style={{
-                padding: "0.875rem 1rem",
-                border: "2px solid #e5e7eb",
-                borderRadius: "8px",
-                fontSize: "1rem",
-                transition: "all 0.2s ease",
-                outline: "none",
-                background: "white",
-                cursor: "pointer"
-              }}
-              onFocus={(e) => e.target.style.borderColor = "#8B0000"}
-              onBlur={(e) => e.target.style.borderColor = "#e5e7eb"}
-            >
-              <option value="pull">📖 Pull (Read)</option>
-              <option value="triage">🔍 Triage</option>
-              <option value="push">✏️ Push (Write)</option>
-              <option value="maintain">🔧 Maintain</option>
-              <option value="admin">👑 Admin</option>
-            </select>
-          </div>
-
-          <div style={{ 
-            display: "flex", 
-            gap: "0.75rem", 
-            alignItems: "center",
-            padding: "1rem",
-            background: "#f8fafc",
-            borderRadius: "8px",
-            border: "1px solid #e2e8f0"
-          }}>
-            <input 
-              type="checkbox" 
-              checked={dryRun} 
-              onChange={e => setDryRun(e.target.checked)}
-              style={{
-                width: "18px",
-                height: "18px",
-                accentColor: "#8B0000"
-              }}
-            />
-            <label style={{ 
-              fontSize: "0.95rem", 
-              color: "#4b5563",
-              cursor: "pointer",
-              fontWeight: "500"
-            }}>
-              🧪 Dry run mode (simulate without making changes)
-            </label>
-          </div>
-
           <button 
             disabled={loading} 
             type="submit"
@@ -339,7 +233,7 @@ export default function Page() {
               }
             }}
           >
-            {loading ? "⏳ Working..." : dryRun ? "🧪 Simulate" : "🚀 Re-invite"}
+            {loading ? "⏳ Working..." : "🚀 Re-invite"}
           </button>
         </form>
 
