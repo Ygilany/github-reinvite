@@ -5,7 +5,8 @@ export const ORGANIZATIONS = {
     owner: "IT3049C", // GitHub organization/owner name
     assignments: {
       "🧑‍💻Lab: Git Started - Your Profile": "git-started-with-your-profile",
-      "🧑‍💻 Campus Portal (JS Exercises)": "campus-portal-js-exercises"
+      "🧑‍💻 Campus Portal (JS Exercises)": "campus-portal-js-exercises",
+      "🧑‍💻 Chatting Application": "chatting-application-lab"
     }
   }
 } as const;
