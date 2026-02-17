@@ -6,7 +6,8 @@ export const ORGANIZATIONS = {
     assignments: {
       "🧑‍💻Lab: Git Started - Your Profile": "git-started-with-your-profile",
       "🧑‍💻 Campus Portal (JS Exercises)": "campus-portal-js-exercises",
-      "🧑‍💻 Chatting Application": "chatting-application-lab"
+      "🧑‍💻 Chatting Application": "chatting-application-lab",
+      "🧑‍💻 Wordle": "wordle"
     }
   }
 } as const;
